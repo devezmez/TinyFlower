@@ -569,7 +569,9 @@ async function loadFarm() {
   const attempts = [
     {
       label: 'proxy Vercel',
-      req: () => fetch(`${PROXY_URL}?farmId=${farmId}&apiKey=${encodeURIComponent(apiKey)}`)
+      req: () => fetch(`${PROXY_URL}?farmId=${farmId}`, {
+        headers: { 'x-api-key': apiKey }
+      })
     },
     {
       label: 'directo',
