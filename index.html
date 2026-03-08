@@ -489,8 +489,13 @@
 
 <script>
 const SFL_PRICE = 0.1025;
-// Proxy serverless — evita el bloqueo CORS del browser
-const SFL_API = '/api/farm';
+const SFL_DIRECT = 'https://api.sunflower-land.com/community/farms';
+// CORS proxies públicos — funcionan en GitHub Pages / hosting estático
+const CORS_PROXIES = [
+  (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  (url) => `https://thingproxy.freeboard.io/fetch/${url}`,
+];
 
 // Known SFL sell values (in SFL) for common crops/resources
 const SELL_PRICES = {
@@ -523,20 +528,41 @@ async function loadFarm() {
   setStatus(`⏳ Cargando farm #${farmId}...`);
   document.getElementById('btn-analyze').disabled = true;
 
-  try {
-    const resp = await fetch(`${SFL_API}?farmId=${farmId}`);
-    if (!resp.ok) { const err = await resp.json().catch(() => ({})); throw new Error(err.error || `HTTP ${resp.status}`); }
-    const json = await resp.json();
-    farmData = json.farm || json;
-    renderFarm(farmData, farmId);
-    setStatus(`✅ Farm #${farmId} cargada exitosamente — ${new Date().toLocaleTimeString()}`);
-    document.getElementById('btn-analyze').disabled = false;
-  } catch(e) {
-    setStatus(`⚠️ ${e.message} — mostrando datos de demo`);
-    farmData = getDemoData(farmId);
-    renderFarm(farmData, farmId);
-    document.getElementById('btn-analyze').disabled = false;
+  const targetUrl = `${SFL_DIRECT}/${farmId}`;
+  let lastError = '';
+
+  // Intentar directo primero, luego cada proxy en orden
+  const attempts = [
+    () => fetch(targetUrl),
+    ...CORS_PROXIES.map(proxy => () => fetch(proxy(targetUrl)))
+  ];
+
+  for (let i = 0; i < attempts.length; i++) {
+    try {
+      setStatus(`⏳ Cargando farm #${farmId}${i > 0 ? ` (proxy ${i}/${CORS_PROXIES.length})` : ''}...`);
+      const resp = await attempts[i]();
+      if (!resp.ok) { lastError = `HTTP ${resp.status}`; continue; }
+      const json = await resp.json();
+      const data = json.farm || json;
+      // Validar que es un farm real
+      if (!data || (!data.inventory && !data.balance && !data.bumpkin)) {
+        lastError = 'Respuesta inválida'; continue;
+      }
+      farmData = data;
+      renderFarm(farmData, farmId);
+      setStatus(`✅ Farm #${farmId} cargada — ${new Date().toLocaleTimeString()}`);
+      document.getElementById('btn-analyze').disabled = false;
+      return;
+    } catch(e) {
+      lastError = e.message;
+    }
   }
+
+  // Todos los proxies fallaron
+  setStatus(`⚠️ No se pudo conectar (${lastError}) — mostrando datos de demo`);
+  farmData = getDemoData(farmId);
+  renderFarm(farmData, farmId);
+  document.getElementById('btn-analyze').disabled = false;
 }
 
 function getDemoData(farmId) {
