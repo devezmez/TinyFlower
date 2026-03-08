@@ -565,35 +565,42 @@ async function loadFarm() {
     return;
   }
 
-  try {
-    setStatus(`⏳ Conectando con farm #${farmId}...`);
-    const resp = await fetch(`${PROXY_URL}?farmId=${farmId}&apiKey=${encodeURIComponent(apiKey)}`);
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      const msg = err.error || err.message || `HTTP ${resp.status}`;
-      // Detect API key required error
-      if (resp.status === 401 || (msg && msg.toLowerCase().includes('api key'))) {
-        throw new Error('API Key requerida — obtenerla en Settings > Developer Options > API Key del juego');
-      }
-      throw new Error(msg);
+  // Intentar proxy Vercel primero, luego llamada directa como fallback
+  const attempts = [
+    {
+      label: 'proxy Vercel',
+      req: () => fetch(`${PROXY_URL}?farmId=${farmId}&apiKey=${encodeURIComponent(apiKey)}`)
+    },
+    {
+      label: 'directo',
+      req: () => fetch(`${SFL_DIRECT}/${farmId}`, {
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'application/json' }
+      })
     }
-    const json = await resp.json();
-    const data = json.farm || json;
-    if (!data || (!data.inventory && !data.balance && !data.bumpkin)) {
-      throw new Error('La farm no existe o está vacía');
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      setStatus(`⏳ Conectando (${attempt.label})...`);
+      const resp = await attempt.req();
+      const text = await resp.text();
+      console.log(`[${attempt.label}] HTTP ${resp.status}:`, text.slice(0, 200));
+      if (!resp.ok) continue;
+      let json;
+      try { json = JSON.parse(text); } catch(e) { continue; }
+      const data = json.farm || json;
+      if (!data || (!data.inventory && !data.balance && !data.bumpkin)) continue;
+      farmData = data;
+      renderFarm(farmData, farmId);
+      setStatus(`✅ Farm #${farmId} cargada (${attempt.label}) — ${new Date().toLocaleTimeString()}`);
+      document.getElementById('btn-analyze').disabled = false;
+      return;
+    } catch(e) {
+      console.warn(`[${attempt.label}] error:`, e.message);
     }
-    farmData = data;
-    renderFarm(farmData, farmId);
-    setStatus(`✅ Farm #${farmId} cargada — ${new Date().toLocaleTimeString()}`);
-    document.getElementById('btn-analyze').disabled = false;
-    return;
-  } catch(e) {
-    const msg = e.message || '';
-    const hint = msg.toLowerCase().includes('api key') || msg.includes('401')
-      ? ' — Ingresá tu API Key (Settings > Developer Options > API Key)'
-      : '';
-    setStatus(`⚠️ ${msg}${hint} — mostrando datos de demo`);
   }
+
+  setStatus(`⚠️ No se pudo conectar — verificá tu API Key. Abrí F12 → Console para ver el error exacto.`);
   farmData = getDemoData(farmId);
   renderFarm(farmData, farmId);
   document.getElementById('btn-analyze').disabled = false;
@@ -858,8 +865,8 @@ function setStatus(msg) {
   document.getElementById('status-text').textContent = msg;
 }
 
-// Auto-load on start
-window.onload = () => loadFarm();
+// Don't auto-load — wait for user to enter API key
+window.onload = () => setStatus('🔑 Pegá tu API Key arriba y presioná CARGAR FARM');
 </script>
 </body>
 </html>
