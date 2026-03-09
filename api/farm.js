@@ -7,30 +7,53 @@ export default async function handler(req, res) {
   const { farmId } = req.query;
   if (!farmId) return res.status(400).json({ error: 'farmId requerido' });
 
-  // Probar los endpoints conocidos de sfl.world en orden
   const endpoints = [
     `https://www.sfl.world/api/farm/${farmId}`,
     `https://api.sfl.world/farm/${farmId}`,
     `https://sfl.world/api/farm/${farmId}`,
     `https://www.sfl.world/api/farms/${farmId}`,
+    `https://www.sfl.world/farm/${farmId}`,
   ];
+
+  const debug = [];
 
   for (const url of endpoints) {
     try {
       const r = await fetch(url, {
-        headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' }
+        headers: { 
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0',
+        },
+        redirect: 'follow',
       });
       const body = await r.text();
-      console.log(`[${url}] status: ${r.status} — body: ${body.slice(0, 150)}`);
+      const preview = body.slice(0, 200);
+      debug.push({ url, status: r.status, preview });
+      console.log(`[${r.status}] ${url} → ${preview}`);
+
+      // Si es JSON válido y tiene datos de farm
       if (r.ok) {
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Cache-Control', 'public, s-maxage=60');
-        return res.status(200).send(body);
+        try {
+          const json = JSON.parse(body);
+          // Verificar que tiene estructura de farm
+          if (json && (json.inventory || json.balance || json.bumpkin || json.farm)) {
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Cache-Control', 'public, s-maxage=60');
+            return res.status(200).json(json);
+          }
+        } catch(e) {
+          debug[debug.length-1].parseError = e.message;
+        }
       }
     } catch(e) {
-      console.log(`[${url}] error: ${e.message}`);
+      debug.push({ url, error: e.message });
+      console.log(`[ERR] ${url} → ${e.message}`);
     }
   }
 
-  return res.status(502).json({ error: 'Ningún endpoint de sfl.world respondió', endpoints });
+  // Devolver debug para diagnosticar
+  return res.status(502).json({ 
+    error: 'Ningún endpoint devolvió datos válidos de farm',
+    debug 
+  });
 }
