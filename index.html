@@ -3,6 +3,425 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌻 TinyFlower — SFL Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #2d6a4f; --green-light: #52b788; --green-neon: #74c69d;
+    --gold: #f4a261; --gold-light: #ffd166;
+    --soil: #3d2b1f; --sky: #0d1b2a;
+    --card-bg: rgba(20,35,25,0.88); --card-border: rgba(82,183,136,0.25);
+    --text: #e8f5e9; --text-dim: #8fb99a; --red: #e76f51;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--sky); color: var(--text); font-family: "Nunito", sans-serif; min-height: 100vh; }
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      radial-gradient(1px 1px at 10% 15%, rgba(255,255,200,.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 40%, rgba(255,255,200,.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 55% 8%,  rgba(255,255,200,.7) 0%, transparent 100%),
+      radial-gradient(1px 1px at 75% 25%, rgba(255,255,200,.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 88% 55%, rgba(255,255,200,.6) 0%, transparent 100%);
+  }
+  body::after {
+    content: ""; position: fixed; bottom: 0; left: 0; right: 0; height: 100px;
+    background: linear-gradient(to top, #1a3c28, transparent); pointer-events: none; z-index: 0;
+  }
+  .wrapper { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 24px 16px 80px; }
+
+  /* HEADER */
+  header {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    margin-bottom: 28px; padding: 20px 24px;
+    background: linear-gradient(135deg, rgba(45,106,79,.6), rgba(13,27,42,.9));
+    border: 2px solid var(--green-light); border-radius: 4px; overflow: hidden; position: relative;
+  }
+  header::before { content: "🌻"; position: absolute; font-size: 90px; right: -10px; top: -20px; opacity: .06; pointer-events: none; }
+  .header-title h1 { font-family: "Press Start 2P", monospace; font-size: 12px; color: var(--gold-light); text-shadow: 2px 2px 0 var(--soil); line-height: 1.6; }
+  .header-title p  { font-family: "VT323", monospace; font-size: 20px; color: var(--green-neon); margin-top: 4px; }
+  .farm-badge { background: var(--soil); border: 2px solid var(--gold); padding: 8px 16px; border-radius: 4px; font-family: "Press Start 2P", monospace; font-size: 10px; color: var(--gold); white-space: nowrap; }
+
+  /* STATUS */
+  #status-bar { font-family: "VT323", monospace; font-size: 20px; margin-bottom: 16px; padding: 10px 16px; border-left: 3px solid var(--green-light); background: rgba(45,106,79,.15); line-height: 1.5; }
+  #status-bar.ok  { color: var(--green-neon); border-color: var(--green-neon); }
+  #status-bar.err { color: #ffb4a2; border-color: var(--red); background: rgba(231,111,81,.1); }
+  #status-bar.info{ color: var(--gold-light); border-color: var(--gold); background: rgba(244,162,97,.08); }
+
+  /* HOW TO PANEL */
+  #howto {
+    background: rgba(244,162,97,.07); border: 1px solid rgba(244,162,97,.3);
+    border-radius: 4px; padding: 20px 24px; margin-bottom: 24px;
+  }
+  #howto h2 { font-family: "Press Start 2P", monospace; font-size: 9px; color: var(--gold-light); margin-bottom: 14px; }
+  #howto ol { padding-left: 20px; display: flex; flex-direction: column; gap: 10px; }
+  #howto li { font-size: 14px; color: var(--text); line-height: 1.6; }
+  #howto li strong { color: var(--gold-light); }
+  #howto li code { background: rgba(255,255,255,.08); padding: 2px 6px; border-radius: 3px; font-size: 12px; color: var(--green-neon); font-family: monospace; word-break: break-all; }
+  .url-box { margin-top: 14px; background: var(--soil); border: 1px solid var(--green-light); border-radius: 4px; padding: 10px 14px; font-family: monospace; font-size: 13px; color: var(--green-neon); word-break: break-all; }
+  .url-box span { color: var(--gold-light); }
+
+  /* TICKER */
+  .sfl-ticker { display: inline-flex; align-items: center; gap: 8px; background: rgba(244,162,97,.1); border: 1px solid rgba(244,162,97,.3); padding: 6px 14px; border-radius: 20px; font-family: "VT323", monospace; font-size: 20px; color: var(--gold); margin-bottom: 24px; }
+  .dot { width: 8px; height: 8px; background: #4caf50; border-radius: 50%; animation: pulse 2s ease infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+
+  /* STATS */
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 4px; padding: 16px; text-align: center; backdrop-filter: blur(8px); }
+  .stat-icon { font-size: 26px; margin-bottom: 6px; }
+  .stat-value { font-family: "VT323", monospace; font-size: 28px; color: var(--gold-light); line-height: 1; }
+  .stat-label { font-size: 10px; color: var(--text-dim); margin-top: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* GRID */
+  .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width:700px){ .main-grid { grid-template-columns: 1fr; } }
+  .full-width { grid-column: 1 / -1; }
+
+  /* PANEL */
+  .panel { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 4px; padding: 20px; backdrop-filter: blur(8px); }
+  .panel-title { font-family: "Press Start 2P", monospace; font-size: 9px; color: var(--green-neon); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid rgba(82,183,136,.2); }
+
+  /* ITEMS */
+  .item-list { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; padding-right: 4px; }
+  .item-list::-webkit-scrollbar { width: 4px; }
+  .item-list::-webkit-scrollbar-thumb { background: var(--green); border-radius: 2px; }
+  .item-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: rgba(255,255,255,.04); border-radius: 3px; border: 1px solid rgba(255,255,255,.06); }
+  .item-row:hover { border-color: rgba(82,183,136,.3); }
+  .item-icon { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
+  .item-name { flex: 1; font-size: 13px; font-weight: 700; }
+  .item-qty { font-family: "VT323", monospace; font-size: 20px; color: var(--gold-light); white-space: nowrap; }
+  .tag { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 10px; text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
+  .tag-sell { background: rgba(116,198,157,.2); color: var(--green-neon); border: 1px solid rgba(116,198,157,.3); }
+  .tag-nft  { background: rgba(100,150,220,.2); color: #90caf9; border: 1px solid rgba(100,150,220,.3); }
+
+  /* BUMPKIN */
+  .bumpkin-card { grid-column: 1/-1; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .bumpkin-avatar { width: 72px; height: 72px; background: linear-gradient(135deg, var(--soil), var(--green)); border: 3px solid var(--gold); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 40px; flex-shrink: 0; }
+  .bumpkin-info .name { font-family: "VT323", monospace; font-size: 30px; color: var(--gold-light); line-height: 1; }
+  .bumpkin-info .lvl  { font-size: 13px; color: var(--text-dim); font-weight: 700; }
+  .xp-bar-wrap { margin-top: 8px; width: 200px; }
+  .xp-bar-bg   { height: 8px; background: rgba(255,255,255,.1); border-radius: 4px; overflow: hidden; }
+  .xp-bar-fill { height: 100%; background: linear-gradient(90deg, var(--green), var(--green-neon)); border-radius: 4px; }
+  .xp-label    { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
+
+  /* AI */
+  #ai-section { grid-column: 1/-1; border-color: rgba(244,162,97,.3); }
+  #ai-section .panel-title { color: var(--gold-light); }
+  .btn { background: linear-gradient(135deg, var(--green), var(--green-light)); border: 2px solid var(--green-neon); color: #fff; padding: 10px 18px; font-family: "Press Start 2P", monospace; font-size: 9px; border-radius: 4px; cursor: pointer; transition: all .15s; white-space: nowrap; }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(82,183,136,.4); }
+  .btn-gold { background: linear-gradient(135deg, #a0522d, var(--gold)); border-color: var(--gold-light); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+  .rec-cards { display: flex; flex-direction: column; gap: 10px; }
+  .rec-card { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 4px; border-left: 4px solid; }
+  .rec-card.sell  { background: rgba(116,198,157,.08); border-color: var(--green-neon); }
+  .rec-card.hold  { background: rgba(69,123,157,.08);  border-color: #64b5f6; }
+  .rec-card.craft { background: rgba(244,162,97,.08);  border-color: var(--gold); }
+  .rc-icon  { font-size: 26px; flex-shrink: 0; margin-top: 2px; }
+  .rc-title { font-weight: 800; font-size: 14px; margin-bottom: 3px; }
+  .rc-body  { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+  .note { font-size: 11px; color: var(--text-dim); margin-top: 14px; padding: 8px 12px; background: rgba(255,255,255,.03); border-radius: 3px; border: 1px solid rgba(255,255,255,.07); line-height: 1.6; }
+  .empty { text-align: center; padding: 32px 20px; color: var(--text-dim); font-family: "VT323", monospace; font-size: 20px; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="header-title">
+      <h1>🌻 TINYFLOWER DASHBOARD</h1>
+      <p>Analizá tu economía en tiempo real</p>
+    </div>
+    <div class="farm-badge" id="farm-badge">FARM #—</div>
+  </header>
+
+  <div id="status-bar" class="info">⏳ Iniciando...</div>
+
+  <div id="howto" style="display:none">
+    <h2>🔑 CÓMO CONECTAR TU FARM</h2>
+    <ol>
+      <li>Abrí <strong>Sunflower Land</strong> en el browser → <a href="https://www.sunflower-land.com" target="_blank" style="color:var(--green-neon)">sunflower-land.com</a></li>
+      <li>Abrí <strong>F12 → Console</strong> y pegá esto para obtener tu JWT:<br>
+        <code style="display:block;margin-top:6px;padding:8px">copy(JSON.parse(localStorage.getItem('token') || '{}').token || 'no encontrado')</code>
+        Eso copia el JWT al portapapeles automáticamente.
+      </li>
+      <li>Volvé acá y accedé con tu JWT en la URL:</li>
+    </ol>
+    <div class="url-box">
+      https://tiny-flower-sfl.vercel.app<span style="color:var(--gold)">/?jwt=</span><span style="opacity:.6">TU_JWT_AQUI</span>
+    </div>
+    <div style="margin-top:12px;font-size:12px;color:var(--text-dim)">
+      ⚠️ El JWT expira cada ~24hs. Si el dashboard deja de cargar, repetí el proceso.
+    </div>
+  </div>
+
+  <div class="sfl-ticker" id="ticker" style="display:none">
+    <div class="dot"></div>
+    SFL ≈ $<span id="sfl-price">0.069</span> USD
+  </div>
+
+  <div class="stats-row" id="stats-row" style="display:none">
+    <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value" id="stat-sfl">—</div><div class="stat-label">Balance SFL</div></div>
+    <div class="stat-card"><div class="stat-icon">🌾</div><div class="stat-value" id="stat-res">—</div><div class="stat-label">Recursos</div></div>
+    <div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-value" id="stat-lvl">—</div><div class="stat-label">Nivel Bumpkin</div></div>
+    <div class="stat-card"><div class="stat-icon">🪙</div><div class="stat-value" id="stat-nft">—</div><div class="stat-label">Coleccionables</div></div>
+  </div>
+
+  <div class="main-grid" id="main-grid" style="display:none"></div>
+
+  <div style="margin-top:16px;text-align:center;display:none" id="ai-btn-wrap">
+    <button class="btn btn-gold" id="btn-ai" onclick="analyzeWithAI()">🤖 ANALIZAR CON IA — QUÉ VENDER</button>
+  </div>
+
+</div>
+
+<script>
+const SFL_PRICE = 0.069;
+
+const SELL_PRICES = {
+  Sunflower:.0001, Potato:.0014, Pumpkin:.02, Carrot:.008, Cabbage:.04,
+  Soybean:.03, Beetroot:.08, Cauliflower:.15, Parsnip:.3, Eggplant:.2,
+  Corn:.25, Radish:.4, Wheat:.025, Kale:.35, Blueberry:.9, Orange:.7,
+  Apple:1.2, Banana:1.5, Grape:.8, Olive:1.0,
+  Wood:.02, Stone:.04, Iron:.08, Gold:.5, Diamond:3.0, Egg:.1, Honey:.5,
+  Anchovy:.2, Squid:.3, Trout:.5, Salmon:1.0,
+};
+
+const ICONS = {
+  Sunflower:"🌻",Potato:"🥔",Pumpkin:"🎃",Carrot:"🥕",Cabbage:"🥬",
+  Soybean:"🫘",Beetroot:"🔴",Cauliflower:"🥦",Parsnip:"🌿",Eggplant:"🍆",
+  Corn:"🌽",Radish:"🫚",Wheat:"🌾",Kale:"🥗",Blueberry:"🫐",Orange:"🍊",
+  Apple:"🍎",Banana:"🍌",Grape:"🍇",Olive:"🫒",
+  Wood:"🪵",Stone:"🪨",Iron:"⚙️",Gold:"✨",Diamond:"💎",Egg:"🥚",Honey:"🍯",
+};
+
+let farmData = null;
+let farmJwt  = null;
+let farmId   = null;
+
+function status(msg, type="ok") {
+  const el = document.getElementById("status-bar");
+  el.textContent = msg;
+  el.className = type;
+}
+
+function fmt(n) {
+  n = parseFloat(n)||0;
+  if(n>=1e6) return (n/1e6).toFixed(1)+"M";
+  if(n>=1e3) return (n/1e3).toFixed(1)+"K";
+  return n%1===0 ? n.toString() : n.toFixed(2);
+}
+
+function lvlFromXP(xp) {
+  const L=[0,100,300,700,1500,3000,6000,10000,17000,28000,45000,80000,130000,200000,320000,500000];
+  for(let i=L.length-1;i>=0;i--) if(xp>=L[i]) return {level:i+1,cur:xp-L[i],next:(L[i+1]||L[i]*2)-L[i]};
+  return {level:1,cur:xp,next:100};
+}
+
+async function init() {
+  // Leer farmId desde URL (?farmId=441) o usar 441 por defecto
+  const params = new URLSearchParams(window.location.search);
+  farmId = params.get("farmId") || "441";
+
+  document.getElementById("farm-badge").textContent = `FARM #${farmId}`;
+  document.getElementById("howto").style.display = "none";
+
+  status(`⏳ Cargando farm #${farmId}...`, "info");
+
+  try {
+    const resp = await fetch(`/api/farm?farmId=${farmId}`);
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(()=>({}));
+      throw new Error(err.error || `HTTP ${resp.status}`);
+    }
+
+    const json = await resp.json();
+    const data = json.farm || json;
+    if (!data || (!data.inventory && !data.balance && !data.bumpkin)) {
+      throw new Error("La farm no tiene datos");
+    }
+
+    farmData = data;
+    // Actualizar farmId desde la respuesta si viene
+    if (data.id) {
+      farmId = data.id;
+      document.getElementById("farm-badge").textContent = `FARM #${farmId}`;
+    }
+
+    render(data);
+    status(`✅ Farm #${farmId} cargada — ${new Date().toLocaleTimeString()}`, "ok");
+    document.getElementById("ticker").style.display = "inline-flex";
+
+  } catch(e) {
+    status(`⚠️ ${e.message} — verificá el Farm ID en la URL (?farmId=441)`, "err");
+  }
+}
+
+function render(data) {
+  document.getElementById("ticker").style.display = "inline-flex";
+  document.getElementById("stats-row").style.display = "grid";
+  document.getElementById("main-grid").style.display  = "grid";
+  document.getElementById("ai-btn-wrap").style.display = "block";
+
+  const inv = data.inventory || {};
+  const bal = parseFloat(data.balance||0);
+  const bmp = data.bumpkin;
+  const lvl = bmp ? lvlFromXP(parseFloat(bmp.experience||0)) : {level:"?",cur:0,next:100};
+
+  document.getElementById("stat-sfl").textContent = fmt(bal);
+  document.getElementById("stat-res").textContent = Object.keys(inv).length;
+  document.getElementById("stat-lvl").textContent = lvl.level;
+  document.getElementById("stat-nft").textContent = Object.entries(inv).filter(([k,v])=>parseFloat(v)>0&&!SELL_PRICES[k]&&parseFloat(v)<50).length;
+
+  const grid = document.getElementById("main-grid");
+  grid.innerHTML = "";
+
+  // Bumpkin
+  if (bmp) {
+    const pct = Math.min(100, (lvl.cur/lvl.next)*100).toFixed(0);
+    const bp = document.createElement("div");
+    bp.className = "panel bumpkin-card";
+    bp.innerHTML = `
+      <div class="bumpkin-avatar">👨‍🌾</div>
+      <div class="bumpkin-info">
+        <div class="name">BUMPKIN LVL ${lvl.level}</div>
+        <div class="lvl">Farm #${farmId||"?"} • ${fmt(bal)} SFL ≈ $${(bal*SFL_PRICE).toFixed(2)}</div>
+        <div class="xp-bar-wrap">
+          <div class="xp-bar-bg"><div class="xp-bar-fill" style="width:${pct}%"></div></div>
+          <div class="xp-label">${fmt(lvl.cur)} / ${fmt(lvl.next)} XP (${pct}%)</div>
+        </div>
+      </div>`;
+    grid.appendChild(bp);
+  }
+
+  // Recursos
+  const res = Object.entries(inv)
+    .map(([n,q])=>({n,q:parseFloat(q)||0,p:SELL_PRICES[n]||0}))
+    .filter(r=>r.q>0&&r.p>0)
+    .sort((a,b)=>b.q*b.p - a.q*a.p);
+
+  const rp = document.createElement("div"); rp.className = "panel";
+  rp.innerHTML = `<div class="panel-title"><span>🌾</span> RECURSOS & CULTIVOS</div>`;
+  if (res.length) {
+    const ul = document.createElement("div"); ul.className = "item-list";
+    res.forEach(r=>{
+      const row = document.createElement("div"); row.className = "item-row";
+      row.innerHTML = `<span class="item-icon">${ICONS[r.n]||"📦"}</span><span class="item-name">${r.n}</span><span class="item-qty">${fmt(r.q)}</span><span class="tag tag-sell">≈${fmt(r.q*r.p)} SFL</span>`;
+      ul.appendChild(row);
+    });
+    rp.appendChild(ul);
+    const total = res.reduce((s,r)=>s+r.q*r.p,0);
+    rp.innerHTML += `<div class="note">💰 Valor total: <strong style="color:var(--gold-light)">${total.toFixed(2)} SFL</strong> ≈ $${(total*SFL_PRICE).toFixed(2)} USD (después del 30% tax = ${(total*.7).toFixed(2)} SFL netos)</div>`;
+  } else {
+    rp.innerHTML += `<div class="empty">🌱 Sin cultivos detectados</div>`;
+  }
+  grid.appendChild(rp);
+
+  // NFTs
+  const nfts = Object.entries(inv)
+    .map(([n,q])=>({n,q:parseFloat(q)||0}))
+    .filter(r=>r.q>0&&!SELL_PRICES[r.n]&&!["Chicken","Cow","Sheep","Pig"].includes(r.n))
+    .sort((a,b)=>b.q-a.q);
+
+  const np = document.createElement("div"); np.className = "panel";
+  np.innerHTML = `<div class="panel-title"><span>🏆</span> COLECCIONABLES & NFTs</div>`;
+  if (nfts.length) {
+    const ul = document.createElement("div"); ul.className = "item-list";
+    nfts.slice(0,15).forEach(c=>{
+      const row = document.createElement("div"); row.className = "item-row";
+      row.innerHTML = `<span class="item-icon">✨</span><span class="item-name">${c.n}</span><span class="item-qty">×${c.q}</span><span class="tag tag-nft">NFT</span>`;
+      ul.appendChild(row);
+    });
+    np.appendChild(ul);
+    np.innerHTML += `<div class="note">ℹ️ Marketplace in-game: 10% fee · OpenSea Polygon: 2.5% fee</div>`;
+  } else {
+    np.innerHTML += `<div class="empty">📦 Sin coleccionables</div>`;
+  }
+  grid.appendChild(np);
+
+  // AI placeholder
+  const ai = document.createElement("div"); ai.id = "ai-section"; ai.className = "panel full-width";
+  ai.innerHTML = `<div class="panel-title"><span>🤖</span> ANÁLISIS IA — RECOMENDACIONES</div><div id="ai-output"><div class="empty" style="padding:10px 0">Presioná el botón <strong style="color:var(--gold)">ANALIZAR CON IA</strong> para recomendaciones personalizadas</div></div>`;
+  grid.appendChild(ai);
+}
+
+async function analyzeWithAI() {
+  if (!farmData) return;
+  const btn = document.getElementById("btn-ai");
+  btn.disabled = true; btn.textContent = "⏳ ANALIZANDO...";
+
+  const inv = farmData.inventory || {};
+  const bal = parseFloat(farmData.balance||0);
+  const bmp = farmData.bumpkin;
+  const lvl = bmp ? lvlFromXP(parseFloat(bmp.experience||0)) : {level:1};
+  const invStr = Object.entries(inv).filter(([k,v])=>parseFloat(v)>0).map(([k,v])=>`${k}:${parseFloat(v).toFixed(0)}`).join(", ");
+
+  const prompt = `Sos un experto en economía de Sunflower Land (SFL), juego blockchain de farming en Polygon.
+
+Farm #${farmId||"441"}: Balance ${bal.toFixed(2)} SFL ($${(bal*SFL_PRICE).toFixed(2)} USD) · Bumpkin Lvl ${lvl.level}
+Inventario: ${invStr||"vacío"}
+
+Precios venta (SFL/unidad): Sunflower=0.0001, Potato=0.0014, Pumpkin=0.02, Carrot=0.008, Cabbage=0.04, Beetroot=0.08, Corn=0.25, Radish=0.4, Kale=0.35, Blueberry=0.9, Orange=0.7, Apple=1.2, Banana=1.5, Wood=0.02, Stone=0.04, Iron=0.08, Gold=0.5, Diamond=3.0, Egg=0.1, Honey=0.5
+
+Reglas clave: 30% tax al retirar recursos · 10% fee marketplace in-game · SFL = $${SFL_PRICE} USD
+
+Respondé en ESPAÑOL con 4 puntos concisos usando emojis:
+1. Top 3 items a VENDER ahora (SFL estimado después del tax)
+2. NFTs/coleccionables: cuáles guardar vs vender
+3. Estrategia concreta para mejorar la economía
+4. ¿Acumular SFL o convertir a USD ahora?
+
+Máximo 220 palabras.`;
+
+  const out = document.getElementById("ai-output");
+  out.innerHTML = `<div style="color:var(--green-neon);font-family:'VT323',monospace;font-size:22px">🤖 Analizando<span id="dots"></span></div>`;
+  let d=0; const di = setInterval(()=>{const el=document.getElementById("dots");if(el)el.textContent=".".repeat(++d%4);},400);
+
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1000, messages:[{role:"user",content:prompt}] })
+    });
+    clearInterval(di);
+    const data = await r.json();
+    const text = data.content?.map(c=>c.text||"").join("")||"Sin respuesta";
+
+    const cards = document.createElement("div"); cards.className = "rec-cards";
+    const map = [
+      {test: l => l.match(/^1\.|vender|sell/i),   cls:"sell",  icon:"💰", title:"Vender Ahora"},
+      {test: l => l.match(/^2\.|nft|colec|guard/i),cls:"hold",  icon:"🏆", title:"NFTs"},
+      {test: l => l.match(/^3\.|estrat|mejorar/i), cls:"craft", icon:"⚡", title:"Estrategia"},
+      {test: l => l.match(/^4\.|usd|acumul|conv/i),cls:"hold",  icon:"📈", title:"SFL vs USD"},
+    ];
+
+    text.split("\n").filter(l=>l.trim()).forEach(line=>{
+      const m = map.find(m=>m.test(line));
+      if (m) {
+        cards.innerHTML += `<div class="rec-card ${m.cls}"><span class="rc-icon">${m.icon}</span><div><div class="rc-title">${m.title}</div><div class="rc-body">${line.replace(/^\d+\.\s*/,"")}</div></div></div>`;
+      } else {
+        cards.innerHTML += `<div style="font-size:13px;color:var(--text-dim);padding:3px 0;line-height:1.6">${line}</div>`;
+      }
+    });
+
+    out.innerHTML = ""; out.appendChild(cards);
+    status("✅ Análisis IA completado", "ok");
+  } catch(e) {
+    clearInterval(di);
+    out.innerHTML = `<div style="color:var(--red);font-size:13px">⚠️ Error IA: ${e.message}</div>`;
+  }
+  btn.disabled = false; btn.textContent = "🤖 ANALIZAR CON IA — QUÉ VENDER";
+}
+
+init();
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SFL Farm Dashboard #441</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
